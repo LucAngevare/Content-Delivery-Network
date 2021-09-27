@@ -32,7 +32,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/fetch/:password/:file", (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
     if (req.params["file"] === "all") {
         res.json({
             success: true,
@@ -42,7 +42,7 @@ app.get("/fetch/:password/:file", (req, res) => {
             pathObj: pathObj
         });
     } else res.sendFile(pathObj[req.params["file"]], (err) => {
-        if (err) return res.status(400).json({
+        if (err) res.status(400).json({
             success: false,
             problem: "No file found",
             error: err
@@ -51,7 +51,7 @@ app.get("/fetch/:password/:file", (req, res) => {
 });
 
 app.delete("/delete/:password/:file", async (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
     if (req.params["file"] === "all") {
         try {
             fs.rm("./files", {
@@ -72,7 +72,7 @@ app.delete("/delete/:password/:file", async (req, res) => {
         }
     } else {
         fs.unlink(`./files/${req.params["file"]}`, (err) => {
-            if (err) return res.status(400).json({
+            if (err) res.status(400).json({
                 success: false,
                 error: err,
                 message: "This problem was likely caused because the file's name is incorrect or the file doesn't exist."
@@ -86,15 +86,15 @@ app.delete("/delete/:password/:file", async (req, res) => {
 });
 
 app.get("/download/:password/:file", (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
     res.download(pathObj[req.params["file"]], (err) => {
-        if (err) return res.status(400).json({ success: false, error: err });
+        if (err) res.status(400).json({ success: false, error: err });
     })
 })
 
 app.get("/authenticate/:old_password/:password", (req, res) => {
-    if (!req.params["password"].length >= 4) return req.status(400).json({ success: false, reason: "password too small" });
-    if (!auth["passwords"].includes(req.params["old_password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!req.params["password"].length >= 4) res.status(400).json({ success: false, reason: "password too small" });
+    if (!auth["passwords"].includes(req.params["old_password"])) res.status(401).json({ success: false, error: "Unauthorized" })
 
     auth["passwords"][auth["passwords"].indexOf(req.params["old_password"])] = req.params["password"];
     fs.writeFile("./auth.js", JSON.stringify(auth)).then(() => {
@@ -104,7 +104,7 @@ app.get("/authenticate/:old_password/:password", (req, res) => {
 })
 
 app.post("/bring/:password", (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
     var busboy = new Busboy({
         headers: req.headers
     });
