@@ -7,7 +7,7 @@ const fs = require("fs");
 const env = require("dotenv").config();
 const Busboy = require("busboy");
 
-var auth = require("auth.js")
+var auth = require("./auth.json")
 
 var pathObj = {};
 var filterFileArray = [];
