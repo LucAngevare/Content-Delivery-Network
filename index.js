@@ -19,12 +19,12 @@ function updateFiles(pathObj, filterFileArray) {
 	for (var val in pathObj) delete pathObj[val]; //Emptying the object without garbage collection
         files.forEach((fileName) => {
             filterFileArray.push(fileName);
-            pathObj[fileName] = path.join(__dirname + `\\files\\${fileName}`);
+            pathObj[fileName] = path.join(__dirname + `/files/${fileName}`);
         })
     });
 }
 
-updateFiles(pathobj, filterFileArray);
+updateFiles(pathObj, filterFileArray);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -93,7 +93,7 @@ app.delete("/delete/:password/:file", async (req, res) => {
             });
         });
     }
-    updateFiles(pathobj, filterFileArray);
+    updateFiles(pathObj, filterFileArray);
 });
 
 app.get("/download/:password/:file", (req, res) => {
@@ -108,7 +108,7 @@ app.get("/authenticate/:old_password/:password", (req, res) => {
     if (!auth["passwords"].includes(req.params["old_password"])) res.status(401).json({ success: false, error: "Unauthorized" })
 
     auth["passwords"][auth["passwords"].indexOf(req.params["old_password"])] = req.params["password"];
-    fs.writeFile("./auth.js", JSON.stringify(auth)).then(() => {
+    fs.writeFile("./auth.json", JSON.stringify(auth), () => {
 	res.status(201).json({ success: true, message: "Successfully updated password" })
 	auth = require("./auth.json")
     })
@@ -133,7 +133,7 @@ app.post("/bring/:password", (req, res) => {
             full_path: `/fetch/${req.params["password"]}/${real_filename}`
         });
     });
-    updateFiles(pathobj, filterFileArray);
+    updateFiles(pathObj, filterFileArray);
     return req.pipe(busboy);
 });
 
