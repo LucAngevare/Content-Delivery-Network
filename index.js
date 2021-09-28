@@ -12,13 +12,19 @@ var auth = require("./auth.json")
 var pathObj = {};
 var filterFileArray = [];
 
-fs.readdir(path.join(__dirname + "/files"), (err, files) => {
-    if (err) console.log(err);
-    files.forEach((fileName) => {
-        filterFileArray.push(fileName);
-        pathObj[fileName] = path.join(__dirname + `\\files\\${fileName}`);
-    })
-});
+function updateFiles(pathObj, filterFileArray) {
+    fs.readdir(path.join(__dirname + "/files"), (err, files) => {
+        if (err) console.log(err);
+	filterFileArray = [];
+	for (var val in pathObj) delete pathObj[val]; //Emptying the object without garbage collection
+        files.forEach((fileName) => {
+            filterFileArray.push(fileName);
+            pathObj[fileName] = path.join(__dirname + `\\files\\${fileName}`);
+        })
+    });
+}
+
+updateFiles(pathobj, filterFileArray);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -32,26 +38,30 @@ app.use((req, res, next) => {
 });
 
 app.get("/fetch/:password/:file", (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
     if (req.params["file"] === "all") {
         res.json({
             success: true,
-            basePath: "/static",
+            basePath: "/fetch",
             download: "/download",
             files: filterFileArray,
             pathObj: pathObj
         });
-    } else res.sendFile(pathObj[req.params["file"]], (err) => {
-        if (err) res.status(400).json({
-            success: false,
-            problem: "No file found",
-            error: err
-        });
+    } else res.sendFile(path.join(__dirname, "/files/", req.params["file"]), (err) => {
+        try {
+	    if (err) res.status(400).json({
+                success: false,
+                problem: "No file found",
+                error: err
+            });
+	} catch(err) {
+	    console.log(err);
+	}
     });
 });
 
 app.delete("/delete/:password/:file", async (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
     if (req.params["file"] === "all") {
         try {
             fs.rm("./files", {
@@ -83,45 +93,47 @@ app.delete("/delete/:password/:file", async (req, res) => {
             });
         });
     }
+    updateFiles(pathobj, filterFileArray);
 });
 
 app.get("/download/:password/:file", (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
     res.download(pathObj[req.params["file"]], (err) => {
         if (err) res.status(400).json({ success: false, error: err });
     })
 })
 
 app.get("/authenticate/:old_password/:password", (req, res) => {
-    if (!req.params["password"].length >= 4) res.status(400).json({ success: false, reason: "password too small" });
+    if (!req.params["password"].length >= 4) return res.status(400).json({ success: false, reason: "password too small" });
     if (!auth["passwords"].includes(req.params["old_password"])) res.status(401).json({ success: false, error: "Unauthorized" })
 
     auth["passwords"][auth["passwords"].indexOf(req.params["old_password"])] = req.params["password"];
     fs.writeFile("./auth.js", JSON.stringify(auth)).then(() => {
 	res.status(201).json({ success: true, message: "Successfully updated password" })
-	auth = require("./auth.js")
+	auth = require("./auth.json")
     })
 })
 
 app.post("/bring/:password", (req, res) => {
-    if (!auth["passwords"].includes(req.params["password"])) res.status(401).json({ success: false, error: "Unauthorized" })
+    if (!auth["passwords"].includes(req.params["password"])) return res.status(401).json({ success: false, error: "Unauthorized" })
     var busboy = new Busboy({
         headers: req.headers
     });
     let real_filename = "";
-    busboy.on("file", function (file, filename) {
-        var saveTo = path.join("./files", filename);
-        file.pipe(fs.createWriteStream(saveTo));
+    busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
+	var saveTo = path.join("./files/", filename);
+	file.pipe(fs.createWriteStream(saveTo));
         real_filename += filename;
     });
-    busboy.on("finish", function () {
+    busboy.on("finish", function() {
         res.status(201).json({
             success: true,
-            root: "/static",
+            root: "/fetch",
             filename: real_filename,
-            full_path: `/static/${real_filename}`
+            full_path: `/fetch/${req.params["password"]}/${real_filename}`
         });
     });
+    updateFiles(pathobj, filterFileArray);
     return req.pipe(busboy);
 });
 
